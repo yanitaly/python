@@ -1,0 +1,53 @@
+=======================================
+== [training] Unit Test with Python3 ==
+=======================================
+
+1. helloworld example
+test for a piece of code (method, class, group of classes)
+unit test returns: pass / fail 
+strickly speaking, test should not use fs, database, network 
+
+"test case"  > "test suite" > "test runner": IDE like pycharm or CMD test runner 
+
+eg. 
+Files:
+phonenumbers/
+├── phonebook.py
+├── README
+└── test_phonebook.py
+
+Run:
+cd <path-to-folder phonenumbers> && python3 -m unittest
+
+cat << EOF > phonebook.py
+#!/usr/libexec/platform_python
+
+class PhoneBook:
+
+    def __init__(self):
+        self.numbers = {}
+    def add(self, name, number):
+        self.numbers[name] = number
+    def lookup(self,name):
+        return self.numbers[name]
+EOF 
+
+cat << EOF > test_phonebook.py 
+import unittest
+from phonebook import PhoneBook
+
+class PhoneBookTest(unittest.TestCase):
+
+    def test_lookup_by_name(self):
+        phonebook = PhoneBook()
+        phonebook.add("Bob", "12345")
+        number = phonebook.lookup("Bob")
+        self.assertEqual("123", number)
+
+    def test_missing_name(self):
+        phonebook = PhoneBook()
+        with self.assertRaises(KeyError):
+            phonebook.lookup("Missing")
+EOF 
+
+2. 
