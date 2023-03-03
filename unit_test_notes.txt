@@ -1,8 +1,8 @@
 =======================================
 == [training] Unit Test with Python3 ==
 =======================================
-
-1. helloworld example ===
+=====================
+1. helloworld example 
 test for a piece of code (method, class, group of classes)
 unit test returns: pass / fail 
 strickly speaking, test should not use fs, database, network 
@@ -41,7 +41,8 @@ class PhoneBookTest(unittest.TestCase):
         self.assertEqual("123", number)
 EOF 
 
-2.  skipping testcase / "test fixture" ===
+=====================
+2.  skipping testcase / "test fixture" 
 @unittest.skip("WIP")
 def test_missing_name(self):
 
@@ -64,7 +65,46 @@ class PhoneBookTest(unittest.TestCase):
             self.phonebook.lookup("Missing")
 EOF 
 
-3. three parts in a test
+=====================
+3. Design with Arrange>Act>Assert
 ARRANGE: set up object 
 ACT: exercise units under test
 ASSERT: make claims 
+commonly used assertion methods see: https://docs.python.org/3/library/unittest.html#assert-methods
+e.g. 
+#!/usr/libexec/platform_python
+class PhoneBook:
+    def __init__(self):
+        self.numbers = {}
+    def add(self, name, number):
+        self.numbers[name] = number
+    def lookup(self,name):
+        return self.numbers[name]
+    def is_consistent(self):
+        for name1, number1 in self.numbers.items():
+            for name2, number2 in self.numbers.items():
+                if name1 == name2:
+                    continue
+                if number1.startswith(number2):
+                    return False
+        return True
+        
+import unittest
+from phonebook import PhoneBook
+class PhoneBookTest(unittest.TestCase):
+    def setUp(self):
+        self.phonebook = PhoneBook()
+    def tearDown(self):
+        pass
+    def test_lookup_by_name(self):
+        self.phonebook.add("Bob", "12345")
+        number =  self.phonebook.lookup("Bob")
+        self.assertEqual("123", number)
+    @unittest.skip("WIP")
+    def test_missing_name(self):
+        with self.assertRaises(KeyError):
+            self.phonebook.lookup("Missing")     # exception
+    def test_empty_phonebook_is_consistent(self):
+        self.phonebook.add("Bob", "12345") # # ASSERT
+        self.phonebook.add("Sue", "123")
+        self.assertFalse(self.phonebook.is_consistent()) # ACT: self.phonebook.is_consistent()  ASSERT: true or not
