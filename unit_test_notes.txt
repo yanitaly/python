@@ -2,7 +2,7 @@
 == [training] Unit Test with Python3 ==
 =======================================
 
-1. helloworld example
+1. helloworld example ===
 test for a piece of code (method, class, group of classes)
 unit test returns: pass / fail 
 strickly speaking, test should not use fs, database, network 
@@ -21,9 +21,7 @@ cd <path-to-folder phonenumbers> && python3 -m unittest
 
 cat << EOF > phonebook.py
 #!/usr/libexec/platform_python
-
 class PhoneBook:
-
     def __init__(self):
         self.numbers = {}
     def add(self, name, number):
@@ -35,19 +33,38 @@ EOF
 cat << EOF > test_phonebook.py 
 import unittest
 from phonebook import PhoneBook
-
 class PhoneBookTest(unittest.TestCase):
-
     def test_lookup_by_name(self):
         phonebook = PhoneBook()
         phonebook.add("Bob", "12345")
         number = phonebook.lookup("Bob")
         self.assertEqual("123", number)
-
-    def test_missing_name(self):
-        phonebook = PhoneBook()
-        with self.assertRaises(KeyError):
-            phonebook.lookup("Missing")
 EOF 
 
-2. 
+2.  skipping testcase / "test fixture" ===
+@unittest.skip("WIP")
+def test_missing_name(self):
+
+cat << EOF > test_phonebook.py 
+import unittest
+from phonebook import PhoneBook
+class PhoneBookTest(unittest.TestCase):
+    def setUp(self) -> None:
+        self.phonebook = PhoneBook()
+    def tearDown(self) -> None:
+        pass
+    def test_lookup_by_name(self):
+        self.phonebook.add("Bob", "12345")
+        number =  self.phonebook.lookup("Bob")
+        self.assertEqual("123", number)
+    # exception
+    @unittest.skip("WIP")
+    def test_missing_name(self):
+        with self.assertRaises(KeyError):
+            self.phonebook.lookup("Missing")
+EOF 
+
+3. three parts in a test
+ARRANGE: set up object 
+ACT: exercise units under test
+ASSERT: make claims 
