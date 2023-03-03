@@ -108,3 +108,25 @@ class PhoneBookTest(unittest.TestCase):
         self.phonebook.add("Bob", "12345") # # ASSERT
         self.phonebook.add("Sue", "123")
         self.assertFalse(self.phonebook.is_consistent()) # ACT: self.phonebook.is_consistent()  ASSERT: true or not
+
+================
+4. unit test with pytest
+not in standard python distribution
+not a member of xUnit family 
+popular alternative to unittest
+
+cat << EOF > test_phonebook_pytest.py 
+class PhoneBook:
+    def __init__(self):
+        self.numbers = {}
+    def add(self, name, number):
+        self.numbers[name] = number
+    def lookup(self, name):
+        return self.numbers[name]
+
+def test_lookup_by_name():
+    phonebook=PhoneBook()
+    phonebook.add("Bob", "1234")
+    assert "1234" == phonebook.lookup("Bob")
+EOF 
+Run: python3 -m pip install pytest && python3 -m pytest  # return: =================================== 1 passed in 0.07s ======
