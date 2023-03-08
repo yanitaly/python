@@ -1,0 +1,13 @@
+
+
+---
+# variable.yml playbook content, run with: ansible-playbook variables.yml --become
+
+- name: this removes tcpdump when server without admin in hostnames
+  hosts: all
+  tasks:
+   - name: rm tcpdump from all but admin server
+     yum:
+      name: tcpdump
+      state: absent
+     when: "'admin' not in inventory_hostname"
