@@ -2,7 +2,7 @@
 == [training] Unit Test with Python3 ==
 =======================================
 =====================
-1. helloworld example 
+1. unittest > helloworld example 
 test for a piece of code (method, class, group of classes)
 unit test returns: pass / fail 
 strickly speaking, test should not use fs, database, network 
@@ -42,7 +42,7 @@ class PhoneBookTest(unittest.TestCase):
 EOF 
 
 =====================
-2.  skipping testcase / "test fixture" 
+2. unittest > skipping testcase / "test fixture" 
 @unittest.skip("WIP")
 def test_missing_name(self):
 
@@ -66,7 +66,7 @@ class PhoneBookTest(unittest.TestCase):
 EOF 
 
 =====================
-3. Design with Arrange>Act>Assert
+3. unittest > Design with Arrange>Act>Assert
 ARRANGE: set up object 
 ACT: exercise units under test
 ASSERT: make claims 
@@ -110,7 +110,8 @@ class PhoneBookTest(unittest.TestCase):
         self.assertFalse(self.phonebook.is_consistent()) # ACT: self.phonebook.is_consistent()  ASSERT: true or not
 
 ================
-4. unit test with pytest
+4. pytest > unit test with pytest 
+(function code and test code in same file)
 not in standard python distribution
 not a member of xUnit family 
 popular alternative to unittest
