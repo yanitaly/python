@@ -2,7 +2,6 @@
 = ANSIBLE STUDY NOTES  2023.03 = 
 ================================
 
-
 LAB3 Core Component > variables =========================================
 ---
 # variable.yml playbook content, run with: ansible-playbook variables.yml 
@@ -32,3 +31,9 @@ AdminServer1
 #2. copy pub key to 3 slaves: e.g. ssh-copy-id ansible@WebServer1
 #3. add ansible root previlage for 3 slaves: ansible ALL=(ALL) NOPASSWD: ALL
 #4. verify with: ansible all -m ping
+
+LAB5 Scripting Administration Tasks with Ansible===============================
+for i in webserver1 dbserver1 adminserver1;
+   do ssh ansible@$i "sudo tar -czf messages.tar.gz /var/log/messages";
+done
+ansible -m fetch -a "src=/home/ansible/messages.tar.gz dest=/tmp/messages" all
