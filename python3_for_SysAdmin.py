@@ -215,6 +215,65 @@ matches = [word.strip() for word in words if snippet in word.lower()]
 print(matches) #  script.py Keith > ['Keith', 'Keithley', 'Keithsburg', 'Keithville']
 
 
+## Useful std lib pkgs 9.1 random / json ======================
+# gen_receipts.py > create 100 json files
+import random 
+import json 
+import os 
+count = int(os.getenv("FILE_COUNT") or 100)
+words = [word.strip() for word in open('/usr/share/dict/words').readlines()]
+for identifier in range(count):
+    amount = random.uniform(1.0, 1000)
+    content = {
+        'topic': random.choice(words),
+        'value': '%.2f' % amount 
+    }
+    with open(f'./new/receipt-{identifier}.json', 'w') as f:
+        json.dump(content, f) 
+
+## Useful std lib pkgs 9.2 shutil / glob ======================
+import os 
+try: 
+    os.mkdir('./processed')
+except OSError:
+    print("Dir 'processded'already exist!")
+# e.g. ls new/receipt-[0-9]*.json > return all matched names from 0 to 9 > globbing 
+import glob, shutil 
+receipts = glob.glob('./new/receipt-[0-9]*.json')
+subtotal = 0.0 
+for path in receipts: 
+    with open(path) as f:
+        content = json.load(f)
+        subtotal += float(content['value'])
+    name = path.split("/")[-1] # "./new/receipt-1.json".split("/") >  ['.', 'new', 'receipt-1.json']
+    destination = f"./processed/{name}"
+    shutil.move(path, destination)  # corresponds to mv ./new/receipt-0.json ./processed/receipt-0.json
+    print(f"moved '{path}' to '{destination}' ") # moved './new/receipt-0.json' './processed/receipt-0.json'
+print("Receipt subtotal: $%.2f" % subtotal) # Receipt subtotal: $52338.06
+
+## Useful std lib pkgs 9.3 re / math ======================
+import re, math 
+#  re is more specific than globbing, e.g. find receipt name with event number 
+re.match('./new/receipt-[0-9]*[24680].json', './new/receipt-2.json') # retrun True
+receipts = [f for f in glob.iglob('./new/receipt-[0-9]*.json') if re.match('./new/receipt-[0-9]*[24680].json', f)]  # find receipt name with event number
+
+# e.g. same example above 
+import glob, shutil 
+subtotal = 0.0 
+for path in glob.iglob('./new/receipt-[0-9]*.json'): 
+    with open(path) as f:
+        content = json.load(f)
+        subtotal += float(content['value'])
+    destination = path.replace('new', 'processed')
+    shutil.move(path, destination)  # corresponds to mv ./new/receipt-0.json ./processed/receipt-0.json
+    print(f"moved '{path}' to '{destination}' ") # moved './new/receipt-0.json' './processed/receipt-0.json'
+import math 
+print("Receipt subtotal: {math.ceil(subtotal)}") # Receipt subtotal: $ 50972
+print("Receipt subtotal: {math.floor(subtotal)}") # Receipt subtotal: $ 50971
+print("Receipt subtotal: {round(subtotal, 2)}") # Receipt subtotal: $ 50971.36
+
+
+
 ## Others changes TBD
 # loop through yaml nested data
 # disks = ['disk%d' % i for i in range(yaml_file['parent_key']['a_key'])]

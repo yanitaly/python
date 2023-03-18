@@ -10,4 +10,4 @@ Notes:
 - triple double quotes for docstrings and raw string literals for regular expressions even if they aren't needed.
 """    
 
-## Useful std lib pkgs 9.1 random / json ======================
+## Use Pip and Virtualenv 10 ======================
