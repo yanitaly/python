@@ -272,6 +272,47 @@ print("Receipt subtotal: {math.ceil(subtotal)}") # Receipt subtotal: $ 50972
 print("Receipt subtotal: {math.floor(subtotal)}") # Receipt subtotal: $ 50971
 print("Receipt subtotal: {round(subtotal, 2)}") # Receipt subtotal: $ 50971.36
 
+## Use Pip and Virtualenv 10.1 install 3pp with PIP ======================
+cat<< .config/pip 
+[list]
+format=columns 
+EOF 
+$ pip3.6 list 
+$ python -m pip install --upgrade pip
+$ pip3.6 freeze > requirement.txt
+$ pip3.6 uninstall -y -r requirements.txt 
+$ pip3.6 install --user -r requirements.txt 
+
+## Use Pip and Virtualenv 10.2 virtualenv ======================
+$ mkdir venvs 
+$ python3.6 -m venv venvs/experiment # created ./bin/activate
+$ source venvs/experiment/bin/activate #   actives venv python, which python > ~/venvs/experiment/bin/python 
+$ deactivate  # back to system python
+
+## Use Pip and Virtualenv 10.3 using 3pp in ur scripts ======================
+# note PIP INSTALL uses PYPI under the hood
+# steps: activate venv > pip install requests > vi ~/bin/weather (using openweathermap.org/OWN_API_KEY)
+#!/home/user/venv/experiment/bin/python 
+import os 
+import requests
+import sys 
+from argparse import ArgumentParser
+parser = ArgumentParser(description="weather api")
+parser.add_argument('zip', help='zip code')
+parser.add_argument('--country', default='us', help='country')
+args = parser.parse_args()
+api_key = os.genenv('OWN_API_KEY')
+if not api_key:
+    print('ERROR: no key provided')
+    sys.exit(1)
+url = f'http://api....'
+res = requests.get(url)
+
+if res.status_code != 200:
+    print('ERROR: api get url failed')
+    sys.exit(1)
+print(res.json()) # returns weather info in json 
+
 
 
 ## Others changes TBD

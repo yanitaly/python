@@ -10,4 +10,6 @@ Notes:
 - triple double quotes for docstrings and raw string literals for regular expressions even if they aren't needed.
 """    
 
-## Use Pip and Virtualenv 10 ======================
+## ch11 Planning & project structure  ======================
+## ch12 Implementing Features with Test Driven Development ======================
+## ch13 Integrating Features and Distributing the Project ======================
