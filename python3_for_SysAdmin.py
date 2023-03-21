@@ -313,10 +313,303 @@ if res.status_code != 200:
     sys.exit(1)
 print(res.json()) # returns weather info in json 
 
+## ch11 Planning & project structure  ======================
+11.1 exam work and prep work 
+# setup database server PostgreDB 
+# ssh to db server > download and run setup.sh > install postgre rpm / epel-release >   
+# psql postgres://demo:password@<ip>:80/<db name> -c "SELECT count (id) FROM employees;"
 
+11.2 planning through documentation (readme driven development)
+mkdir pgbackup 
+pip3.6 install --pipenv  # pipenv (Pipfile iso requirements.txt)
+pipenv --python $(which python3.6) # creates virtual env and manages dependence, and Pipfile 
+curl -o .gitignore  https://raw.githubusercontent.com/github/gitignore/main/Python.gitignore
+vi README.rst  # rst format of markdown  
+    Pgbackup 
+        CLI for backup remote PostgreSQL db eitehr locally or to S3
+    Preparing the development 
+        1. ensure pip and pipenv installed
+        2. clone repo: git clone git@github.com:example/pgbackup 
+        3. cd to repo
+        4. fetch development dependencies: make install
+        5. activate virtualenv: pipenv shell 
+    Usage
+        pass in a full database URL, stroage driver, destination
+        e.g. pgbackup postgres://bob@example.com:/db_one --driver local /var/local/db_one/backups/dump.sql 
+    Running tests
+        run test locally using: make (if virtualenv is active)
+        if virtualenv is not active: pipenv run make 
+        
+11.3 inital project layout 
+mkdir -p src/pgbackup tests 
+touch src/pgbackup/__init__.py tests/.keep 
+vi setup.py # setuptool 
+    from setuptools import setup, find_packages
+    with open('README.rst', encoding='UTF-8') as f:
+        readme = f.read()
+    setup(
+        name='pgbackup'
+        version=
+        description=
+        log_description
+        author=
+        auther_email=
+        istall_requires
+        packages=find_packages('src'),
+        package_dir={'':'src'}
+    ) 
+pipenv shell 
+pip install -e .   # install pgbackup 
 
-## Others changes TBD
-# loop through yaml nested data
-# disks = ['disk%d' % i for i in range(yaml_file['parent_key']['a_key'])]
-# for t_disk in disks 
+vi Makefile # create makefile
+        .PHONY: install test 
+        default: test
+        
+        install:
+            pipenv install --dev --skip-lock
+            
+        test:
+            PYTHONPATH=./src pytest 
+make install 
+            
+   
+## ch12 Implementing Features with Test Driven Development ======================
+1. Intro to TDD and first tests
+pipenv install --dev pytest # Pipfile 
+We’re going to write three tests to start:
+    A test that shows that the CLI fails if no driver is specified.
+    A test that shows that the CLI fails if there is no destination value given.
+    A test that shows, given a driver and a destination, that the CLI’s returned Na
+    mespace has the proper values set
+
+import pytest
+from pgbackup import cli
+url = "postgres://bob:password@example.com:5432/db_one"
+def test_parser_without_driver():
+     """
+     Without a specified driver the parser will exit
+     """
+     with pytest.raises(SystemExit):
+     parser = cli.create_parser()
+     parser.parse_args([url])
+def test_parser_with_driver():
+     """
+     The parser will exit if it receives a driver
+     without a destination
+     """
+     parser = cli.create_parser()
+     with pytest.raises(SystemExit):
+     parser.parse_args([url, "--driver", "local"])
+def test_parser_with_driver_and_destination():
+     """
+     The parser will not exit if it receives a driver
+     with a destination
+     """
+    parser = cli.create_parser()
+    args = parser.parse_args([url, "--driver","local","/some/path"])
+    assert args.driver == "local"
+    assert args.destination == "/some/path"
+
+2. implementing CLI (approach: red > green > refactor )
+touch src/pgbackup/cli.py
+
+from argparse import Action, ArgumentParser
+known_drivers = ['local', 's3']
+class DriverAction(Action):
+    def __call__(self, parser, namespace, values, option_string=None):
+        driver, destination = values
+        if driver.lower() not in known_drivers:
+            parser.error("Unknown driver. Available drivers are'local' & 's3'")
+        namespace.driver = driver.lower()
+        namespace.destination = destination
+    def create_parser():
+        parser = ArgumentParser(description="""
+        Back up PostgreSQL databases locally or to AWS S3.
+        """)
+        parser.add_argument("url", help="URL of database to backup")
+        parser.add_argument("--driver",help="how & where to store backup",nargs=2,action=DriverAction,required=True)
+        return parser
+        
+Removing Test Duplication Using pytest.fixture
+Adding More Tests
+Adding Driver Type Validation
+
+test/test_cli.py (partial)
+@pytest.fixture
+def parser():
+    return cli.create_parser()
+ 
+def test_parser_with_unknown_drivers(parser):
+     """
+     The parser will exit if the driver name is unknown.
+     """
+     with pytest.raises(SystemExit):
+     parser.parse_args([url, "--driver", "azure", "destination"])
+def test_parser_with_known_drivers(parser):
+     """
+     The parser will not exit if the driver name is known.
+     """
+     for driver in ['local', 's3']:
+     assert parser.parse_args([url, "--driver", driver,"destination"])
+
+Final:
+import pytest
+from pgbackup import cli
+url = "postgres://bob@example.com:5432/db_one"
+@pytest.fixture
+def parser():
+    return cli.create_parser()
+def test_parser_without_driver(parser):
+     """
+     Without a specified driver the parser will exit
+     """
+     with pytest.raises(SystemExit):
+        parser.parse_args([url])
+def test_parser_with_driver(parser):
+     """
+     The parser will exit if it receives a driver without a destination
+     """
+     with pytest.raises(SystemExit):
+        parser.parse_args([url, "--driver", "local"])
+def test_parser_with_unknown_driver(parser):
+     """
+     The parser will exit if the driver name is unknown.
+     """
+     with pytest.raises(SystemExit):
+        parser.parse_args([url, "--driver", "azure", "destination"])
+def test_parser_with_known_drivers(parser):
+     """
+     The parser will not exit if the driver name is known.
+     """
+     for driver in ['local', 's3']:
+        assert parser.parse_args([url, "--driver", driver,"destination"])
+def test_parser_with_driver_and_destination(parser):
+     """
+     The parser will not exit if it receives a driver with a destination
+     """
+     args = parser.parse_args([url, "--driver", "local", "/some/path"])
+     assert args.url == url
+     assert args.driver == "local"
+     assert args.destination == "/some/path"
   
+3. Mocking in tests 
+note: pg_dump tool exists outside python, so we need mocking 
+pipenv install --dev pytest-mock 
+
+tests/test_pgdump.py
+import pytest
+import subprocess
+from pgbackup import pgdump
+url = "postgres://bob:password@example.com:5432/db_one"
+def test_dump_calls_pg_dump(mocker):
+     """
+     Utilize pg_dump with the database URL
+     """
+     mocker.patch('subprocess.Popen')
+     assert pgdump.dump(url)
+     subprocess.Popen.assert_called_with(['pg_dump', url],stdout=subprocess.PIPE)
+
+4. implementing postgreSQL interaction 
+
+src/pgbackup/pgdump.py
+import subprocess
+def dump(url):
+    return subprocess.Popen(['pg_dump', url],stdout=subprocess.PIPE)
+ 
+def test_dump_handles_oserror(mocker):
+     """
+     pgdump.dump returns a reasonable error if pg_dump isn't
+    installed.
+     """
+    mocker.patch('subprocess.Popen', side_effect=OSError("no such file"))
+    with pytest.raises(SystemExit):
+        pgdump.dump(url)
+ 
+ src/pgbackup/pgdump.py
+import sys
+import subprocess
+def dump(url):
+     try:
+     return subprocess.Popen(['pg_dump', url],stdout=subprocess.PIPE)
+     except OSError as err:
+     print(f"Error: {err}")
+     sys.exit(1)
+     
+ 5. implementing Local File Storage 
+
+ _tests/test_storage.py_
+ import tempfile
+from pgbackup import storage
+def test_storing_file_locally():
+     """
+     Writes content from one file-like to another
+     """
+     infile = tempfile.TemporaryFile('r+b')
+     infile.write(b"Testing")
+     infile.seek(0)
+     outfile = tempfile.NamedTemporaryFile(delete=False)
+     storage.local(infile, outfile)
+     with open(outfile.name, 'rb') as f:
+        assert f.read() == b"Testing"
+
+src/pgbackup/storage.py
+def local(infile, outfile):
+     outfile.write(infile.read())
+     outfile.close()
+     infile.close()
+ 
+  6. implementing aws interaction 
+$ pipenv install boto3
+$ exit
+$ mkdir ~/.aws
+$ pip3.6 install --user awscli
+$ aws configure
+$ exec $SHELL
+ pipenv shell
+
+tests/test_storage.py (partial)
+def test_storing_file_on_s3(mocker, infile):
+     """
+     Writes content from one readable to S3
+     """
+     client = mocker.Mock()
+     storage.s3(client, infile, "bucket", "file-name")
+     client.upload_fileobj.assert_called_with( infile,"bucket", "file-name")
+     
+src/pgbackup/storage.py (partial)
+def s3(client, infile, bucket, name):
+    client.upload_fileobj(infile, bucket, name)
+ 
+ ## ch13 Integrating Features and Distributing the Project =====================
+ 1. Add “console_script” to project 
+ setup.py (partial)
+ install_requires=['boto3'],
+ entry_points={
+     'console_scripts': [
+     'pgbackup=pgbackup.cli:main',
+     ],
+ }
+ 
+ src/pgbackup/cli.py
+ def main():
+     import boto3
+     from pgbackup import pgdump, storage
+     args = create_parser().parse_args()
+     dump = pgdump.dump(args.url)
+     if args.driver == 's3':
+         client = boto3.client('s3')
+         # TODO: create a better name based on the database name and the date
+         storage.s3(client, dump.stdout, args.destination,'example.sql')
+     else:
+         outfile = open(args.destination, 'wb')
+         storage.local(dump.stdout, outfile)
+         
+ 2. Building and Sharing a Wheel Distribution
+ setup.cfg
+    [bdist_wheel]
+    python-tag = py36
+  $ python setup.py bdist_wheel  # > build our wheel 
+  $ pip uninstall pgbackup
+  $ pip install dist/pgbackup-0.1.0-py36-noneany.whl
+
+FILE END ==================
