@@ -1,0 +1,307 @@
+===================================
+= ANSIBLE STUDY NOTES  2023.03.21 = 
+===================================
+
+Ch7. Core Component > variables =========================================
+---
+# variable.yml playbook content, run with: ansible-playbook variables.yml 
+- name: this removes tcpdump when server without admin in hostnames
+  hosts: all
+  become: yes
+  tasks:
+   - name: rm tcpdump from all but admin server
+     yum:
+      name: tcpdump
+      state: absent
+     when: "'admin' not in inventory_hostname"
+   - name: install git on redhat servers
+     yum:
+      name: git
+      state: present
+     when: ansible_facts['os_family'] == 'RedHat'
+
+Ch5. Configure Ansible Managed Nodes ===========================================
+#1. create host with 3 slaves, /etc/ansible/hosts: 
+[webservers]
+WebServer1
+[dbserver]
+DBServer1
+[admins]
+AdminServer1
+#2. copy pub key to 3 slaves: e.g. ssh-copy-id ansible@WebServer1
+#3. add ansible root previlage for 3 slaves: ansible ALL=(ALL) NOPASSWD: ALL
+#4. verify with: ansible all -m ping
+
+Ch6. Scripting Administration Tasks with Ansible===============================
+for i in webserver1 dbserver1 adminserver1;
+   do ssh ansible@$i "sudo tar -czf messages.tar.gz /var/log/messages";
+done
+ansible -m fetch -a "src=/home/ansible/messages.tar.gz dest=/tmp/messages" all
+
+Ch7. Create Ansible Plays and Playbooks ======================
+# 7.1  Commonly Used Modules
+Verify Connectivity in the Environment
+Install httpd
+Start and Enable the httpd Service
+Create a dba User Account
+Copy the Required File
+Create /var/www/html/index.html
+Clone the Ansible Git Repository into /opt on adminservers
+
+# 7.2 Complex Conditional 
+Install the linuxacademy_backup_package, Accounting for the Repository or Package Not Being Available
+Check for the Existence of /root/archive.tar and Create It If It Doesn't
+
+# 7.3 Get Clients to a Specific State
+Install the "linuxacademy-backup-software" Package throughout Our Environment
+Install httpd on the webserver Group
+Start and Enable the httpd Service on the webserver Group
+Create a dba User Account on the dbserver Group
+Copy /root/DBAstuff.txt to the New User's Home Directory
+Create index.html in /var/www/html on the Web Server
+Install Git on the webserver and dbserver Groups, If It Is Not Already Installed
+Create Red Hat Server-Specific Files
+Running the Playbook
+
+Ch8. Ansible Modules for System Administration Tasks ==========
+# 8.1 Manage Security 
+# Ensure Ports 80 and 22 Are Open on Webservers
+# Ensure Ports 5432 and 22 Are Open on dbservers
+# Enable SELinux on All Servers
+---
+- name: webserver firewall rules
+  hosts: webservers
+  become: yes
+
+  tasks:
+   - name: ssh firewall rules
+     firewalld:
+      permanent: yes
+      state: enabled
+      immediate: yes
+      service: ssh
+
+   - name: http firewall rules
+     firewalld:
+      permanent: yes
+      state: enabled
+      immediate: yes
+      service: http
+
+- name: Set up firewalls on dbservers
+  hosts: dbservers
+  become: yes
+
+  tasks:
+   - name: ssh firewall rules
+     firewalld:
+      permanent: yes
+      state: enabled
+      immediate: yes
+      service: ssh
+
+   - name: postgres rules
+     firewalld:
+      permanent: yes
+      state: enabled
+      immediate: yes
+      service: postgresql
+
+- name: SELinux
+  hosts: all
+  become: yes
+
+  tasks:
+   - name: Enable SELinux
+     selinux:
+      state: enforcing
+      policy: targeted
+
+# 8.2 Manage File Content 
+# Deploy `index.html`
+# Copy and Execute the `db deploy` (deploy.sh) Script 
+# Redeploy `index.html`
+---
+- name: copy webapp
+  hosts: webservers
+  become: yes
+  tasks:
+   - name: install webapp
+     copy:
+      src: /root/index.html
+      dest: /var/www/html/index.html
+      owner: apache
+      group: apache
+      mode: 0644
+
+- name: copy db script
+  hosts: dbservers
+  become: yes
+  tasks: 
+   - name: copy deploy script
+#    script: /root/deploy.sh
+     copy:
+      src: /root/deploy.sh
+      dest: /opt/deploy.sh
+      owner: root
+      group: root
+      mode: 0755
+   - name: Execute the script 
+      command: sh /opt/deploy.sh 
+ansible-playbook filedeploy.yml
+---
+- name: copy webapp
+ hosts: webservers
+ become: yes
+ tasks:
+  - name: install webapp
+    copy:
+     src: /root/index2.html
+     dest: /var/www/html/index.html
+     owner: apache
+     group: apache
+     mode: 0644
+Run the playbook again: ansible-playbook filedeploy.yml
+
+# 8.3 Manage Users and Groups
+  Ensure the 'backups' Group Exists with the Correct GID on All Servers
+  Create the 'new_backup' User on All Servers with the Required Settings
+  Create the New Group and Add the 'new_backup' User
+---
+- name: verify group exists
+ hosts: all
+ become: yes
+ tasks:
+  - group: 
+     gid: 12310
+     name: backups
+     state: present
+  - group:
+     gid: 12311
+     name: new_backups
+     state: present
+  - user:
+     name: old_backup
+     state: absent
+  - user:
+     name: new_backup
+     uid: 12427
+     shell: /bin/false
+     password_lock: yes
+     groups: backups, new_backups
+
+# 8.4 Manage Services 
+#  Start httpd on the Clients in the webserver Group
+#  Start PostgreSQL on Clients in the dbservers and adminservers Groups
+---
+- name: Start httpd
+  hosts: webservers
+  become: yes
+  tasks:
+  - service:
+     name: httpd
+     state: started
+     enabled: yes
+
+- name: Start postgresql
+  hosts: dbservers:admins
+  become: yes
+  tasks:
+  - systemd: #  Because the services need to start asynchronously, we have to use the systemd module
+     name: postgresql
+     state: started
+     no_block: yes
+
+# 8.5 Manage FS
+# lvg, lvol, filesystem, and mount
+---
+- name: Disks playbook
+  hosts: dbservers
+  become: yes
+  tasks:
+   - name: Create the Volume Group
+     lvg:
+      vg: RHCE
+      pvs: /dev/xvdg
+   - name: Create Logical Volume
+     lvol:
+      lv: AppDB2
+      vg: RHCE
+      size: 10G
+      pvs: /dev/xvdg
+      state: present
+   - name: Format the disk
+     filesystem:
+      dev: /dev/RHCE/AppDB2
+      fstype: xfs
+   - name: Mount the disk
+     mount:
+      fstype: xfs
+      src: /dev/RHCE/AppDB2
+      state: mounted
+      path: /mnt/appdb2
+ansible-playbook disks.yml
+ssh ansible@dbserver1
+df -h
+
+# 8.6 Manage Archiving 
+# Unpack the /root/file.tar.gz Tarball into /opt on DBServer1
+# Unpack the devstuff Tarball into /opt on dbserver1
+# Compress and Copy /var/log/messages from dbserver1 to the Ansible Host
+---
+- name: Copy data dev stuff and inflate data and dev stuff
+  hosts: dbservers
+  become: yes
+  tasks:
+  - unarchive:
+     src: /root/file.tar.gz
+     dest: /opt/
+ - unarchive:
+     src: /tmp/devstuff.tar.gz
+     dest: /opt/
+     remote_src: yes
+  - archive:
+     path: /var/log/messages
+     dest: /tmp/messages.tar.gz
+  - fetch:
+     src: /tmp/messages.tar.gz
+     dest: /tmp/
+
+# 8.7 Manage Scheduled Tasks  
+# Write a Playbook to Create a Weekly YUM Update Job in Cron
+# Write a Playbook to Execute /usr/bin/status on Reboot
+# Write a Playbook to Execute /usr/bin/faillock_report at the Required Time
+- name: Cron jobs
+     hosts: all
+     become: yes
+
+     tasks:
+     - cron:
+        name: "Weekly YUM Update"
+        special_time: weekly
+        job: "/usr/bin/yum update -y"
+
+     - cron:
+        name: "Reboot Status"
+        special_time: reboot
+        job: "/usr/bin/status"
+
+     - cron:
+        name: "Faillock Report"
+        job: /usr/bin/faillock_report
+        weekday: "1,3,5"
+        minute: "30"
+        hour: "7"
+        
+Ch9. Using templates =====================================
+# Write a Template to Replace the Document Root in httpd.conf and Any Other Configurations Required
+# Write a Playbook to Deploy the Template to the webserver Group
+
+Ch10. Roles  =============================================
+Ch11. Managing Parallelism ===============================
+Ch12. Sensitive data / Vault =============================
+# Write the Playbook to be Encrypted
+# Encrypt the Playbook
+# Run the Encrypted Playbook
+
+Ch13. Documentation ======================================
