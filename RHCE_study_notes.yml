@@ -1,11 +1,30 @@
-===================================
-= ANSIBLE STUDY NOTES  2023.03.21 = 
-===================================
+===========================================-====
+= RHCE / ANSIBLE                               =
+= study notes    2023.03.21                    = 
+================================================
 
-Ch7. Core Component > variables =========================================
+Ch5. Configure Ansible Managed Nodes ===========================================
+cat /etc/ansible/hosts   # create host with 3 slaves
+[webservers]   
+WebServer1
+[dbserver]
+DBServer1
+[admins]
+AdminServer1
+ssh-copy-id ansible@WebServer1  # copy pub key to 3 slaves 
+ansible ALL=(ALL) NOPASSWD: ALL    # add ansible root previlage for 3 slaves: 
+ansible all -m ping # verify by ping 
+
+Ch6. Scripting Administration Tasks with Ansible===============================
+for i in webserver1 dbserver1 adminserver1;
+   do ssh ansible@$i "sudo tar -czf messages.tar.gz /var/log/messages";
+done
+ansible -m fetch -a "src=/home/ansible/messages.tar.gz dest=/tmp/messages" all
+
+Ch7. Core Component + variables =========================================
 ---
 # variable.yml playbook content, run with: ansible-playbook variables.yml 
-- name: this removes tcpdump when server without admin in hostnames
+- name: Removes tcpdump from non-admin servers, install git on redhat servers
   hosts: all
   become: yes
   tasks:
@@ -20,37 +39,91 @@ Ch7. Core Component > variables =========================================
       state: present
      when: ansible_facts['os_family'] == 'RedHat'
 
-Ch5. Configure Ansible Managed Nodes ===========================================
-#1. create host with 3 slaves, /etc/ansible/hosts: 
-[webservers]
-WebServer1
-[dbserver]
-DBServer1
-[admins]
-AdminServer1
-#2. copy pub key to 3 slaves: e.g. ssh-copy-id ansible@WebServer1
-#3. add ansible root previlage for 3 slaves: ansible ALL=(ALL) NOPASSWD: ALL
-#4. verify with: ansible all -m ping
-
-Ch6. Scripting Administration Tasks with Ansible===============================
-for i in webserver1 dbserver1 adminserver1;
-   do ssh ansible@$i "sudo tar -czf messages.tar.gz /var/log/messages";
-done
-ansible -m fetch -a "src=/home/ansible/messages.tar.gz dest=/tmp/messages" all
-
 Ch7. Create Ansible Plays and Playbooks ======================
 # 7.1  Commonly Used Modules
-Verify Connectivity in the Environment
-Install httpd
-Start and Enable the httpd Service
-Create a dba User Account
-Copy the Required File
-Create /var/www/html/index.html
-Clone the Ansible Git Repository into /opt on adminservers
+ansible -m ping all # 1. Verify Connectivity in the Environment
+# 2.Install httpd
+# 3. Start and Enable the httpd Service
+# 6. Create /var/www/html/index.html
+---
+# Common Modules Playbook
+#
+- name: Common Modules Playbook
+  become: yes
+  hosts: webservers
+
+  tasks:
+   - name: Install httpd on webservers
+     yum:
+      name: httpd
+      state: present
+   - name: Start the httpd service
+     service:
+      name: httpd
+      state: started
+      enabled: yes
+   - name: Create index.html
+     file:
+      path: /var/www/html/index.html
+      state: touch
+# 4. Create a dba User Account
+# 5. Copy the Required File
+---
+- name: DB server playbook
+  become: yes
+  hosts: dbservers
+  tasks:
+   - name: Add the 'dba' user to the dbservers
+     user:
+       name: dba
+   - name: Copy required DBA files
+     copy:
+      src: /root/DBAstuff.txt
+      dest: /home/dba/
+      owner: dba
+      group: dba
+      mode: 0600
+# 7. Clone the Ansible Git Repository into /opt on adminservers
+---
+- name: Use git to clone the Ansible repo
+  hosts: admins
+  become: yes
+  tasks:
+   - name: Install git
+     yum:
+      name: git
+      state: present
+   - name: Use the git module
+     git:
+      repo: https://github.com/ansible/ansible.git
+      dest: /opt
 
 # 7.2 Complex Conditional 
 Install the linuxacademy_backup_package, Accounting for the Repository or Package Not Being Available
 Check for the Existence of /root/archive.tar and Create It If It Doesn't
+
+---
+#Conditional Playbook (ignore_errors)
+
+- name: Conditional Playbook
+  hosts: all
+  become: yes
+
+  tasks:
+   - name: Install backup package
+     yum:
+      name: linuxacademy_backup_package
+      state: present
+     ignore_errors: true
+   - name: Check for archive file
+     command: ls /root/archive.tar
+     register: check_result
+     ignore_errors: true
+   - name: Touch archive file
+     file:
+      path: /root/archive.tar
+      state: touch
+     when: check_result is failed
 
 # 7.3 Get Clients to a Specific State
 Install the "linuxacademy-backup-software" Package throughout Our Environment
@@ -62,6 +135,74 @@ Create index.html in /var/www/html on the Web Server
 Install Git on the webserver and dbserver Groups, If It Is Not Already Installed
 Create Red Hat Server-Specific Files
 Running the Playbook
+---
+- name: Install backup software
+  hosts: all
+  become: yes
+  tasks:
+   - name:  yum command
+     yum:
+      name: linuxacademy-backup-software
+      state: present
+     ignore_errors: yes
+- name: Install httpd
+  hosts: webservers
+  become: yes
+  tasks:
+   - name: httpd install
+     yum:
+      name: httpd
+      state: present
+   - name: Service management for httpd
+     service:
+      name: httpd
+      state: started
+      enabled: yes
+- name: DB server management
+  hosts: dbservers
+  become: yes
+  tasks:
+   - name: Add user
+     user:
+      name: dba
+      state: present
+   - name: Copy DB user data
+     copy:
+      src: /root/DBAstuff.txt
+      dest: /home/dba/DBAstuff.txt
+      owner: dba
+      group: dba
+      mode: 0600
+- name: Set up index.html on webservers
+  hosts: webservers
+  become: yes
+  tasks:
+   - name: Create and populate index.html
+     lineinfile:
+      path: /var/www/html/index.html
+      line: Waiting for content.
+      create: yes
+      owner: apache
+      group: apache
+      mode: 0644
+- name: Enable devs to easily populate content
+  hosts: webservers:dbservers
+  become: yes
+  tasks:
+   - name: Install git
+     yum:
+      name: git
+      state: present
+- name: Red Hat specific configuration
+  hosts: all
+  become: yes
+  tasks:
+   - name: Populate file with IP addresses
+     lineinfile:
+      path: /root/addresses
+      line: "{{ ansible_facts['all_ipv4_addresses'] }}"
+      create: yes
+     when: ansible_facts['os_family'] == 'RedHat'
 
 Ch8. Ansible Modules for System Administration Tasks ==========
 # 8.1 Manage Security 
@@ -296,6 +437,24 @@ df -h
 Ch9. Using templates =====================================
 # Write a Template to Replace the Document Root in httpd.conf and Any Other Configurations Required
 # Write a Playbook to Deploy the Template to the webserver Group
+Using the provided httpd.template, replace all occurrences of /var/www/ with {{ variable_name }}, e.g. DocumentRoot "{{ webdir }}html"
+
+---
+- name: Template playbook
+  hosts: webservers
+  become: yes
+  vars:
+   webdir: '/opt/'
+
+  tasks:
+   - name: Deploy the web template
+     template:
+      src: /root/httpd.template
+      dest: /etc/httpd/conf/httpd.conf
+
+ssh ansible@webserver1
+ansible-playbook template.yml
+sudo grep opt /etc/httpd/conf/httpd.conf
 
 Ch10. Roles  =============================================
 Ch11. Managing Parallelism ===============================
@@ -303,5 +462,23 @@ Ch12. Sensitive data / Vault =============================
 # Write the Playbook to be Encrypted
 # Encrypt the Playbook
 # Run the Encrypted Playbook
+
+---
+- name: Deploy DBA password file
+  hosts: dbservers
+  become: yes
+
+  tasks:
+   - name: Create and pgapass file
+     lineinfile:
+      line: 'LinuxAcad'
+      create: yes
+      owner: dba
+      group: dba
+      mode: 0600
+      path: /home/dba/.pgpass
+
+ansible-vault encrypt dba-pass.yml  # encrypt yml file 
+ansible-playbook --ask-vault-pass dba-pass.yml  # requires password
 
 Ch13. Documentation ======================================
