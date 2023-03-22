@@ -279,6 +279,15 @@ smbclient -U cloud_user -L localhost # OK and with: rm /etc/pam.d/samba.old
 
 ## ch9. Aiding Third-Party Investigations =================================================
 # Troubleshoot Kernel Issues with kdump and systemtap
-Enable kdump
-Enable the traffic-dump Module
-Give the cloud_user Access to SystemTap Commands
+# Enable kdump
+systemctl enable --now kdump
+cd /opt/scripts/
+stap traffic-dump.stp # yes to install kernel devel pkg 
+stap -p 4 -m trafficdump traffic-dump.stp # Enable the traffic-dump Module, generate trafficdump.ko 
+mkdir /lib/modules/`uname -r`/systemtap
+mv trafficdump.ko /lib/modules/`uname -r`/systemtap/
+staprun trafficdump
+usermod -aG stapusr cloud_user #  Give the cloud_user Access to SystemTap Commands
+cat /etc/group # cloud_user now in the stapusr group. switch user and verify with staprun trafficdump
+
+# END of Training ===================================================
