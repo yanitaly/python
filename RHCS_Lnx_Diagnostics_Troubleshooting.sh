@@ -65,7 +65,7 @@ APP server:
 LOG server: 
     cat /var/log/hosts/app.log | grep blabla
 
-## ch3. System Startup Issues  ===============================================================
+## ch3. System Startup Issues  ======================================================
 # 3.1. Manage Kernel Modules and Parameters
 modinfo -p iscsi_tcp # show module is off
 cat /sys/module/iscsi_tcp # not available 
@@ -235,8 +235,7 @@ tshark -r /tmp/mysql.pcap #  shows attempted connections to port 3306 as well as
 
 ## ch7. APP ===================================================================
 # 7.1 Troubleshooting Library Dependency Issues
-# issue: tcpdump not working 
-# run cmd > check libs
+# issue: tcpdump not working,  run cmd > check libs
 tcpdump -c 5 -i eth0  # shows libpcap.so.1 issue 
 ldd $(which tcpdump)  | grep libpcap 
 dnf whatprovides */libpcap.so*
@@ -244,10 +243,42 @@ dnf reinstall -y libpcap
 tcpdump -c 5 -i eth0 # OK 
 
 # 7.2 Use Standard Application Debugging Tools on Linux
+./servercheck # customer tool/app 
+valgrind ./servercheck  # check if app has any memory leak > OK 
+ltrace ./servercheck  # check lib calls 
+strace ./servercheck  # check sys calls 
+
 # 7.3 Resolving SELinux Issues
+# issue: The https protocol will not start > reviw logs > changing SElinx context 
+systemctl status httpd 
+systemctl start httpd 
+systemctl status httpd # show cant find ip for port 3333
+systemctl status firewalld # not found > OK 
+setenforce 0  # selinux turnoff 
+systemctl start httpd  > OK 
+setenforce 0  
+ausearch -m avc -ts recent # not much info 
+sealert -a /var/log/audit/audit.log # more info 
+semanage port -l | grep http  # http ports dont include 3333
+semanage port --help # shows -a to add port  
+semanage port -a -t http_port_t -p tcp 3333  # verify with: semanage port -l | grep http
+systemctl start httpd  # systemctl status httpd 
 
 ## ch8. Authentication ========================================================
 # Troubleshoot an Issue with the Pluggable Authentication Module
+# issue: want to access Samba as the cloud_user, but you find any attempt to log in fails 
+smbclient -U cloud_user -L localhost  # fails
+cat /var/log/samba/log.smbd
+cat /var/log/samba/log.samba-bgqd
+tail /var/log/secure
+cat /etc/pam.d/samba  # missing auth line
+rpm -V samba  # show content change for /etc/pam.d/samba  
+mv /etc/pam.d/samba /etc/pam.d/samba.old
+dnf reinstall samba -y
+smbclient -U cloud_user -L localhost # OK and with: rm /etc/pam.d/samba.old
 
-## ch9. 3pp ====================================================================
-# Troubleshoot Kernel Issues
+## ch9. Aiding Third-Party Investigations =================================================
+# Troubleshoot Kernel Issues with kdump and systemtap
+Enable kdump
+Enable the traffic-dump Module
+Give the cloud_user Access to SystemTap Commands
