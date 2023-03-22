@@ -31,6 +31,7 @@ sort, uniq, grep fmt, tr, head/tail, sed, awk
 cmd1 | cmd2 # cmd1 output is input for cmd2 
 
 # Demoggification / UUOC 
-
+cat /etc/passwd | grep rob # wrong 
+grep rob /etc/passwd  # right 
 
 # ch2 Basics of Bash Scripting ===============================
